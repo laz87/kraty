@@ -1,0 +1,2071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brewery Empties Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bottles-primary: #22C55E;
+            --bottles-secondary: #16A34A;
+            --bottles-bg: #F0FDF4;
+            --crates-primary: #3B82F6;
+            --crates-secondary: #1D4ED8;
+            --crates-bg: #EFF6FF;
+            --kegs-primary: #F59E0B;
+            --kegs-secondary: #D97706;
+            --kegs-bg: #FFFBEB;
+            --text-primary: #1F2937;
+            --text-secondary: #6B7280;
+            --bg-light: #F9FAFB;
+            --border-color: #E5E7EB;
+            --success: #10B981;
+            --danger: #EF4444;
+            --warning: #F59E0B;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-light);
+            color: var(--text-primary);
+            padding-bottom: 80px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1F2937 0%, #374151 100%);
+            color: white;
+            padding: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .breadcrumb {
+            font-size: 0.875rem;
+            opacity: 0.8;
+            margin-top: 0.25rem;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-height: 44px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--bottles-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--bottles-secondary);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-light);
+        }
+
+        .btn-icon {
+            padding: 0.5rem;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .product-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .product-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--card-color);
+        }
+
+        .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        }
+
+        .product-card.bottles {
+            --card-color: var(--bottles-primary);
+        }
+
+        .product-card.crates {
+            --card-color: var(--crates-primary);
+        }
+
+        .product-card.kegs {
+            --card-color: var(--kegs-primary);
+        }
+
+        .product-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--card-color);
+        }
+
+        .product-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .product-description {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .product-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--card-color);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 0.25rem;
+        }
+
+        .product-view {
+            display: none;
+        }
+
+        .product-view.active {
+            display: block;
+        }
+
+        .product-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .product-header-icon {
+            font-size: 2.5rem;
+            color: var(--product-color);
+        }
+
+        .product-header-info h2 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .product-header-info p {
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        .tab-container {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .tab-nav {
+            display: flex;
+            background: var(--bg-light);
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .tab-nav::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab-btn {
+            padding: 1rem 1.5rem;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-btn.active {
+            color: var(--product-color);
+            border-bottom-color: var(--product-color);
+            background: white;
+        }
+
+        .tab-content {
+            padding: 2rem;
+        }
+
+        .entry-form {
+            display: grid;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .form-input, .form-select {
+            padding: 0.75rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+            min-height: 44px;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--product-color);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 100px;
+            gap: 1rem;
+        }
+
+        .debt-list, .advance-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .debt-item, .advance-item {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .debt-item:hover, .advance-item:hover {
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .debt-header, .advance-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .customer-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .debt-amount, .advance-amount {
+            font-weight: 700;
+            color: var(--product-color);
+        }
+
+        .debt-details, .advance-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .debt-actions, .advance-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .btn-small {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.75rem;
+            border-radius: 0.375rem;
+            min-height: 32px;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #DC2626;
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #D97706;
+        }
+
+        .fab {
+            position: fixed;
+            bottom: 90px;
+            right: 1rem;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--product-color, var(--bottles-primary));
+            color: white;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+            z-index: 50;
+        }
+
+        .fab:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.4);
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            z-index: 100;
+        }
+
+        .nav-item {
+            flex: 1;
+            padding: 0.75rem;
+            text-align: center;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+            min-height: 60px;
+        }
+
+        .nav-item.active {
+            color: var(--product-color, var(--bottles-primary));
+            background: var(--bg-light);
+        }
+
+        .nav-item:hover {
+            background: var(--bg-light);
+        }
+
+        .nav-icon {
+            font-size: 1.25rem;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+            padding: 1rem;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            max-width: 500px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            padding: 0.25rem;
+        }
+
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .analytics-card {
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .analytics-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .analytics-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--product-color);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-light);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--product-color);
+            transition: width 0.3s;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+
+        .search-bar {
+            position: sticky;
+            top: 0;
+            background: white;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            z-index: 10;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--border-color);
+            border-radius: 2rem;
+            font-size: 1rem;
+            background: var(--bg-light);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--product-color);
+            background: white;
+        }
+
+        .notification {
+            position: fixed;
+            top: 80px;
+            right: 1rem;
+            background: var(--success);
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            z-index: 150;
+            transform: translateX(100%);
+            transition: transform 0.3s;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            border-top-color: var(--product-color);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .product-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .analytics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .modal-content {
+                margin: 1rem;
+                padding: 1.5rem;
+            }
+            
+            .header h1 {
+                font-size: 1.1rem;
+            }
+            
+            .product-header {
+                padding: 1rem;
+            }
+            
+            .tab-content {
+                padding: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .product-stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div>
+                <h1 id="headerTitle">Brewery Empties Tracker</h1>
+                <div class="breadcrumb" id="breadcrumb">Dashboard</div>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="exportData()">
+                    📊 Export
+                </button>
+                <button class="btn btn-secondary" onclick="showSettings()">
+                    ⚙️ Settings
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- Dashboard View -->
+        <div id="dashboardView" class="view active">
+            <div class="product-grid">
+                <div class="product-card bottles" onclick="showProductView('bottles')">
+                    <div class="product-icon">🍺</div>
+                    <h3 class="product-title">Bottles</h3>
+                    <p class="product-description">Track returnable beer bottles across all brands</p>
+                    <div class="product-stats">
+                        <div class="stat">
+                            <div class="stat-value" id="bottlesDebtCount">0</div>
+                            <div class="stat-label">Active Debts</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value" id="bottlesAdvanceCount">0</div>
+                            <div class="stat-label">Advances</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-card crates" onclick="showProductView('crates')">
+                    <div class="product-icon">📦</div>
+                    <h3 class="product-title">Crates</h3>
+                    <p class="product-description">Manage bottle crates and their circulation</p>
+                    <div class="product-stats">
+                        <div class="stat">
+                            <div class="stat-value" id="cratesDebtCount">0</div>
+                            <div class="stat-label">Active Debts</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value" id="cratesAdvanceCount">0</div>
+                            <div class="stat-label">Advances</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-card kegs" onclick="showProductView('kegs')">
+                    <div class="product-icon">🛢️</div>
+                    <h3 class="product-title">Kegs</h3>
+                    <p class="product-description">Monitor keg rentals and returns</p>
+                    <div class="product-stats">
+                        <div class="stat">
+                            <div class="stat-value" id="kegsDebtCount">0</div>
+                            <div class="stat-label">Active Debts</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value" id="kegsAdvanceCount">0</div>
+                            <div class="stat-label">Advances</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Product Views -->
+        <div id="bottlesView" class="product-view">
+            <div class="product-header">
+                <div class="product-header-icon">🍺</div>
+                <div class="product-header-info">
+                    <h2>Bottles Management</h2>
+                    <p>Track returnable beer bottles</p>
+                </div>
+            </div>
+
+            <div class="tab-container">
+                <div class="tab-nav">
+                    <button class="tab-btn active" onclick="showTab('bottles', 'debts')">Active Debts</button>
+                    <button class="tab-btn" onclick="showTab('bottles', 'add')">Add Entry</button>
+                    <button class="tab-btn" onclick="showTab('bottles', 'advances')">Advances</button>
+                    <button class="tab-btn" onclick="showTab('bottles', 'history')">History</button>
+                    <button class="tab-btn" onclick="showTab('bottles', 'analytics')">Analytics</button>
+                </div>
+
+                <div id="bottles-debts" class="tab-content active">
+                    <div class="search-bar">
+                        <input type="text" class="search-input" placeholder="Search customers..." 
+                               oninput="filterDebts('bottles', this.value)">
+                    </div>
+                    <div id="bottlesDebtList" class="debt-list"></div>
+                </div>
+
+                <div id="bottles-add" class="tab-content">
+                    <form class="entry-form" onsubmit="addDebtEntry('bottles', event)">
+                        <div class="form-group">
+                            <label class="form-label">Customer Name</label>
+                            <input type="text" class="form-input" name="customerName" required 
+                                   placeholder="Enter customer name" list="customersList">
+                            <datalist id="customersList"></datalist>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Product</label>
+                                <select class="form-select" name="productId" required>
+                                    <option value="">Select bottle type...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Quantity</label>
+                                <input type="number" class="form-input" name="quantity" required min="1" value="1">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Add Debt Entry</button>
+                    </form>
+                </div>
+
+                <div id="bottles-advances" class="tab-content">
+                    <div id="bottlesAdvanceList" class="advance-list"></div>
+                </div>
+
+                <div id="bottles-history" class="tab-content">
+                    <div id="bottlesHistoryList" class="debt-list"></div>
+                </div>
+
+                <div id="bottles-analytics" class="tab-content">
+                    <div class="analytics-grid">
+                        <div class="analytics-card">
+                            <div class="analytics-title">Total Bottles Owed</div>
+                            <div class="analytics-value" id="bottlesTotalOwed">0</div>
+                        </div>
+                        <div class="analytics-card">
+                            <div class="analytics-title">Total Advances</div>
+                            <div class="analytics-value" id="bottlesTotalAdvances">0</div>
+                        </div>
+                        <div class="analytics-card">
+                            <div class="analytics-title">Active Customers</div>
+                            <div class="analytics-value" id="bottlesActiveCustomers">0</div>
+                        </div>
+                        <div class="analytics-card">
+                            <div class="analytics-title">Return Rate</div>
+                            <div class="analytics-value" id="bottlesReturnRate">0%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Similar structure for crates and kegs views -->
+        <div id="cratesView" class="product-view">
+            <div class="product-header">
+                <div class="product-header-icon">📦</div>
+                <div class="product-header-info">
+                    <h2>Crates Management</h2>
+                    <p>Track bottle crates and circulation</p>
+                </div>
+            </div>
+
+            <div class="tab-container">
+                <div class="tab-nav">
+                    <button class="tab-btn active" onclick="showTab('crates', 'debts')">Active Debts</button>
+                    <button class="tab-btn" onclick="showTab('crates', 'add')">Add Entry</button>
+                    <button class="tab-btn" onclick="showTab('crates', 'advances')">Advances</button>
+                    <button class="tab-btn" onclick="showTab('crates', 'history')">History</button>
+                    <button class="tab-btn" onclick="showTab('crates', 'analytics')">Analytics</button>
+                </div>
+
+                <div id="crates-debts" class="tab-content active">
+                    <div class="search-bar">
+                        <input type="text" class="search-input" placeholder="Search customers..." 
+                               oninput="filterDebts('crates', this.value)">
+                    </div>
+                    <div id="cratesDebtList" class="debt-list"></div>
+                </div>
+
+                <div id="crates-add" class="tab-content">
+                    <form class="entry-form" onsubmit="addDebtEntry('crates', event)">
+                        <div class="form-group">
+                            <label class="form-label">Customer Name</label>
+                            <input type="text" class="form-input" name="customerName" required 
+                                   placeholder="Enter customer name" list="customersList">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Product</label>
+                                <select class="form-select" name="productId" required>
+                                    <option value="">Select crate type...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Quantity</label>
+                                <input type="number" class="form-input" name="quantity" required min="1" value="1">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Add Debt Entry</button>
+                    </form>
+                </div>
+
+                <div id="crates-advances" class="tab-content">
+                    <div id="cratesAdvanceList" class="advance-list"></div>
+                </div>
+
+                <div id="crates-history" class="tab-content">
+                    <div id="cratesHistoryList" class="debt-list"></div>
+                </div>
+
+                <div id="crates-analytics" class="tab-content">
+                    <div class="analytics-grid">
+                        <div class="analytics-card">
+                            <div class="analytics-title">Total Crates Owed</div>
+                            <div class="analytics-value" id="cratesTotalOwed">0</div>
+                        </div>
+                        <div class="analytics-card">
+                            <div class="analytics-title">Total Advances</div>
+                            <div class="analytics-value" id="cratesTotalAdvances">0</div>
+                        </div>
+                        <div class="analytics-card">
+                            <div class="analytics-title">Active Customers</div>
+                            <div class="analytics-value" id="cratesActiveCustomers">0</div>
+                        </div>
+                        <div class="analytics-card">
+                            <div class="analytics-title">Circulation Rate</div>
+                            <div class="analytics-value" id="cratesCirculationRate">0%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="kegsView" class="product-view">
+            <div class="product-header">
+                <div class="product-header-icon">🛢️</div>
+                <div class="product-header-info">
+                    <h2>Kegs Management</h2>
+                    <p>Monitor keg rentals and returns</p>
+                </div>
+            </div>
+
+            <div class="tab-container">
+                <div class="tab-nav">
+                    <button class="tab-btn active" onclick="showTab('kegs', 'debts')">Active Debts</button>
+                    <button class="tab-btn" onclick="showTab('kegs', 'add')">Add Entry</button>
+                    <button class="tab-btn" onclick="showTab('kegs', 'advances')">Advances</button>
+                    <button class="tab-btn" onclick="showTab('kegs', 'history')">History</button>
+                    <button class="tab-btn" onclick="showTab('kegs', 'analytics')">Analytics</button>
+                </div>
+
+                <div id="kegs-debts" class="tab-content active">
+                    <div class="search-bar">
+                        <input type="text" class="search-input" placeholder="Search customers..." 
+                               oninput="filterDebts('kegs', this.value)">
+                    </div>
+                    <div id="kegsDebtList" class="debt-list"></div>
+                </div>
+
+                <div id="kegs-add" class="tab-content">
+                    <form class="entry-form" onsubmit="addDebtEntry('kegs', event)">
+                        <div class="form-group">
+                            <label class="form-label">Customer Name</label>
+                            <input type="text" class="form-input" name="customerName" required 
+                                   placeholder="Enter customer name" list="customersList">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Product</label>
+                                <select class="form-select" name="productId" required>
+                                    <option value="">Select keg type...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Quantity</label>
+                                <input type="number" class="form-input" name="quantity" required min="1" value="1">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Add Debt Entry</button>
+                    </form>
+                </div>
+
+                <div id="kegs-advances" class="tab-content">
+                    <div id="kegsAdvanceList" class="advance-list"></div>
+                </div>
+
+                <div id="kegs-history" class="tab-content">
+                    <div id="kegsHistoryList" class="debt-list"></div>
+                </div>
+
+                <div id="kegs-analytics" class="tab-content">
+                    <div class="analytics-grid">
+                        <div class="analytics-card">
+                            <div class="analytics-title">Total Kegs Owed</div>
+                            <div class="analytics-value" id="kegsTotalOwed">0</div>
+                        </div>
+                        <div class="analytics-card">
+                            <div class="analytics-title">Total Advances</div>
+                            <div class="analytics-value" id="kegsTotalAdvances">0</div>
+                        </div>
+                        <div class="analytics-card">
+                            <div class="analytics-title">Active Customers</div>
+                            <div class="analytics-value" id="kegsActiveCustomers">0</div>
+                        </div>
+                        <div class="analytics-card">
+                            <div class="analytics-title">Turnaround Time</div>
+                            <div class="analytics-value" id="kegsTurnaroundTime">0d</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Action Button -->
+    <button class="fab" onclick="quickAddEntry()" id="fabBtn">
+        ➕
+    </button>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <button class="nav-item active" onclick="showView('dashboard')">
+            <div class="nav-icon">🏠</div>
+            <div>Home</div>
+        </button>
+        <button class="nav-item" onclick="showAllProductsView()">
+            <div class="nav-icon">📊</div>
+            <div>All Data</div>
+        </button>
+        <button class="nav-item" onclick="showConversionTool()">
+            <div class="nav-icon">🔄</div>
+            <div>Convert</div>
+        </button>
+        <button class="nav-item" onclick="showReportsView()">
+            <div class="nav-icon">📈</div>
+            <div>Reports</div>
+        </button>
+    </div>
+
+    <!-- Modals -->
+    <div id="returnModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Process Return</h3>
+                <button class="close-btn" onclick="closeModal('returnModal')">&times;</button>
+            </div>
+            <form onsubmit="processReturn(event)">
+                <div class="form-group">
+                    <label class="form-label">Return Quantity</label>
+                    <input type="number" class="form-input" id="returnQuantity" required min="1">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        <input type="checkbox" id="createAdvance"> Create advance for surplus
+                    </label>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('returnModal')">Cancel</button>
+                    <button type="submit" class="btn btn-success">Process Return</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Edit Entry</h3>
+                <button class="close-btn" onclick="closeModal('editModal')">&times;</button>
+            </div>
+            <form onsubmit="saveEdit(event)">
+                <div class="form-group">
+                    <label class="form-label">Customer Name</label>
+                    <input type="text" class="form-input" id="editCustomerName" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Quantity</label>
+                    <input type="number" class="form-input" id="editQuantity" required min="1">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input type="date" class="form-input" id="editDate" required>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('editModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Settings</h3>
+                <button class="close-btn" onclick="closeModal('settingsModal')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Import Data</label>
+                <input type="file" class="form-input" accept=".json" onchange="importData(event)">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Manage Products</label>
+                <button type="button" class="btn btn-secondary" onclick="showProductManager()">Manage Products</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Data Management</label>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-warning" onclick="clearAllData()">Clear All Data</button>
+                    <button type="button" class="btn btn-primary" onclick="exportData()">Export Backup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification"></div>
+
+    <script>
+        // App State Management
+        class BreweryAppState {
+            constructor() {
+                this.currentView = 'dashboard';
+                this.currentProductType = null;
+                this.activeTab = 'debts';
+                this.currentEditId = null;
+                this.currentReturnData = null;
+                this.searchFilters = {};
+                this.products = [];
+                this.emptiesData = [];
+                this.advanceEmpties = [];
+                this.initializeDB();
+            }
+
+            async initializeDB() {
+                try {
+                    this.db = await this.openDB();
+                    await this.loadInitialData();
+                    this.updateUI();
+                } catch (error) {
+                    console.error('Database initialization failed:', error);
+                    this.showNotification('Database initialization failed', 'error');
+                }
+            }
+
+            openDB() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open('BreweryEmptiesDB', 3);
+                    
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => resolve(request.result);
+                    
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        
+                        // Products store
+                        if (!db.objectStoreNames.contains('products')) {
+                            const productStore = db.createObjectStore('products', { keyPath: 'id', autoIncrement: true });
+                            productStore.createIndex('type', 'type');
+                            productStore.createIndex('brand', 'brand');
+                            productStore.createIndex('isActive', 'isActive');
+                        }
+                        
+                        // Empties data store
+                        if (!db.objectStoreNames.contains('emptiesData')) {
+                            const emptiesStore = db.createObjectStore('emptiesData', { keyPath: 'id', autoIncrement: true });
+                            emptiesStore.createIndex('customerName', 'customerName');
+                            emptiesStore.createIndex('productId', 'productId');
+                            emptiesStore.createIndex('productType', 'productType');
+                            emptiesStore.createIndex('cleared', 'cleared');
+                            emptiesStore.createIndex('dateOwed', 'dateOwed');
+                        }
+                        
+                        // Advance empties store
+                        if (!db.objectStoreNames.contains('advanceEmpties')) {
+                            const advanceStore = db.createObjectStore('advanceEmpties', { keyPath: 'id', autoIncrement: true });
+                            advanceStore.createIndex('customerName', 'customerName');
+                            advanceStore.createIndex('productId', 'productId');
+                            advanceStore.createIndex('productType', 'productType');
+                        }
+                        
+                        // Settings store
+                        if (!db.objectStoreNames.contains('settings')) {
+                            db.createObjectStore('settings', { keyPath: 'key' });
+                        }
+                        
+                        // Analytics store
+                        if (!db.objectStoreNames.contains('analytics')) {
+                            db.createObjectStore('analytics', { keyPath: 'id', autoIncrement: true });
+                        }
+                    };
+                });
+            }
+
+            async loadInitialData() {
+                this.products = await this.getAllFromStore('products');
+                this.emptiesData = await this.getAllFromStore('emptiesData');
+                this.advanceEmpties = await this.getAllFromStore('advanceEmpties');
+                
+                // Initialize with default products if empty
+                if (this.products.length === 0) {
+                    await this.initializeDefaultProducts();
+                }
+            }
+
+            async initializeDefaultProducts() {
+                const defaultProducts = [
+                    // Bottles
+                    { name: 'Tusker 500ml Bottles', shortName: 'Tusker 500ml', type: 'bottles', brand: 'Tusker', size: '500ml', category: 'Beer Bottles', unit: 'bottles', color: '#22C55E', icon: '🍺', isActive: true, displayOrder: 1, defaultQuantity: 24, bottleType: 'returnable' },
+                    { name: 'Guinness 500ml Bottles', shortName: 'Guinness 500ml', type: 'bottles', brand: 'Guinness', size: '500ml', category: 'Beer Bottles', unit: 'bottles', color: '#1F2937', icon: '🍺', isActive: true, displayOrder: 2, defaultQuantity: 24, bottleType: 'returnable' },
+                    { name: 'Heineken 330ml Bottles', shortName: 'Heineken 330ml', type: 'bottles', brand: 'Heineken', size: '330ml', category: 'Beer Bottles', unit: 'bottles', color: '#22C55E', icon: '🍺', isActive: true, displayOrder: 3, defaultQuantity: 24, bottleType: 'returnable' },
+                    
+                    // Crates
+                    { name: 'Tusker Crates (24 bottles)', shortName: 'Tusker Crates', type: 'crates', brand: 'Tusker', capacity: 24, category: 'Beer Crates', unit: 'crates', color: '#3B82F6', icon: '📦', isActive: true, displayOrder: 1, defaultQuantity: 1, crateSize: 24 },
+                    { name: 'Guinness Crates (24 bottles)', shortName: 'Guinness Crates', type: 'crates', brand: 'Guinness', capacity: 24, category: 'Beer Crates', unit: 'crates', color: '#3B82F6', icon: '📦', isActive: true, displayOrder: 2, defaultQuantity: 1, crateSize: 24 },
+                    { name: 'Mixed Beer Crates', shortName: 'Mixed Crates', type: 'crates', brand: 'Mixed', capacity: 24, category: 'Beer Crates', unit: 'crates', color: '#3B82F6', icon: '📦', isActive: true, displayOrder: 3, defaultQuantity: 1, crateSize: 24 },
+                    
+                    // Kegs
+                    { name: 'Tusker 50L Kegs', shortName: 'Tusker 50L', type: 'kegs', brand: 'Tusker', size: '50L', capacity: 50, category: 'Beer Kegs', unit: 'kegs', color: '#F59E0B', icon: '🛢️', isActive: true, displayOrder: 1, defaultQuantity: 1, kegType: 'stainless' },
+                    { name: 'Guinness 30L Kegs', shortName: 'Guinness 30L', type: 'kegs', brand: 'Guinness', size: '30L', capacity: 30, category: 'Beer Kegs', unit: 'kegs', color: '#F59E0B', icon: '🛢️', isActive: true, displayOrder: 2, defaultQuantity: 1, kegType: 'stainless' },
+                    { name: 'Heineken 25L Kegs', shortName: 'Heineken 25L', type: 'kegs', brand: 'Heineken', size: '25L', capacity: 25, category: 'Beer Kegs', unit: 'kegs', color: '#F59E0B', icon: '🛢️', isActive: true, displayQuantity: 1, kegType: 'aluminum' }
+                ];
+
+                for (const product of defaultProducts) {
+                    product.createdDate = new Date().toISOString();
+                    await this.addToStore('products', product);
+                }
+                
+                this.products = await this.getAllFromStore('products');
+            }
+
+            async getAllFromStore(storeName) {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction([storeName], 'readonly');
+                    const store = transaction.objectStore(storeName);
+                    const request = store.getAll();
+                    
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async addToStore(storeName, data) {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction([storeName], 'readwrite');
+                    const store = transaction.objectStore(storeName);
+                    const request = store.add(data);
+                    
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async updateInStore(storeName, data) {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction([storeName], 'readwrite');
+                    const store = transaction.objectStore(storeName);
+                    const request = store.put(data);
+                    
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async deleteFromStore(storeName, id) {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction([storeName], 'readwrite');
+                    const store = transaction.objectStore(storeName);
+                    const request = store.delete(id);
+                    
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            showNotification(message, type = 'success') {
+                const notification = document.getElementById('notification');
+                notification.textContent = message;
+                notification.className = `notification ${type}`;
+                notification.classList.add('show');
+                
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 3000);
+            }
+
+            updateUI() {
+                this.updateDashboardStats();
+                this.updateProductSelects();
+                this.updateCustomersList();
+                this.refreshCurrentView();
+            }
+
+            updateDashboardStats() {
+                const types = ['bottles', 'crates', 'kegs'];
+                
+                types.forEach(type => {
+                    const activeDebts = this.emptiesData.filter(item => 
+                        item.productType === type && !item.cleared
+                    ).length;
+                    
+                    const advances = this.advanceEmpties.filter(item => 
+                        item.productType === type && item.remainingQuantity > 0
+                    ).length;
+                    
+                    const debtCountEl = document.getElementById(`${type}DebtCount`);
+                    const advanceCountEl = document.getElementById(`${type}AdvanceCount`);
+                    
+                    if (debtCountEl) debtCountEl.textContent = activeDebts;
+                    if (advanceCountEl) advanceCountEl.textContent = advances;
+                });
+            }
+
+            updateProductSelects() {
+                const types = ['bottles', 'crates', 'kegs'];
+                
+                types.forEach(type => {
+                    const products = this.products.filter(p => p.type === type && p.isActive);
+                    const select = document.querySelector(`#${type}View select[name="productId"]`);
+                    
+                    if (select) {
+                        select.innerHTML = `<option value="">Select ${type.slice(0, -1)} type...</option>`;
+                        products.forEach(product => {
+                            select.innerHTML += `<option value="${product.id}">${product.name}</option>`;
+                        });
+                    }
+                });
+            }
+
+            updateCustomersList() {
+                const customers = [...new Set(this.emptiesData.map(item => item.customerName))];
+                const datalist = document.getElementById('customersList');
+                
+                if (datalist) {
+                    datalist.innerHTML = '';
+                    customers.forEach(customer => {
+                        datalist.innerHTML += `<option value="${customer}">`;
+                    });
+                }
+            }
+
+            refreshCurrentView() {
+                if (this.currentProductType) {
+                    this.refreshDebtList(this.currentProductType);
+                    this.refreshAdvanceList(this.currentProductType);
+                    this.refreshHistoryList(this.currentProductType);
+                    this.refreshAnalytics(this.currentProductType);
+                }
+            }
+
+            refreshDebtList(productType) {
+                const debts = this.emptiesData.filter(item => 
+                    item.productType === productType && !item.cleared
+                );
+                
+                const container = document.getElementById(`${productType}DebtList`);
+                if (!container) return;
+                
+                if (debts.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">📋</div>
+                            <h3>No active debts</h3>
+                            <p>No customers currently owe any ${productType}</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = debts.map(debt => {
+                    const product = this.products.find(p => p.id === debt.productId);
+                    const productName = product ? product.shortName : 'Unknown Product';
+                    const daysOld = Math.floor((new Date() - new Date(debt.dateOwed)) / (1000 * 60 * 60 * 24));
+                    
+                    return `
+                        <div class="debt-item">
+                            <div class="debt-header">
+                                <span class="customer-name">${debt.customerName}</span>
+                                <span class="debt-amount">${debt.quantity} ${product?.unit || 'units'}</span>
+                            </div>
+                            <div class="debt-details">
+                                <span>${productName}</span>
+                                <span>${daysOld} days old</span>
+                            </div>
+                            <div class="debt-actions">
+                                <button class="btn btn-small btn-success" onclick="openReturnModal(${debt.id})">
+                                    Return
+                                </button>
+                                <button class="btn btn-small btn-warning" onclick="openEditModal(${debt.id})">
+                                    Edit
+                                </button>
+                                <button class="btn btn-small btn-danger" onclick="deleteDebt(${debt.id})">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            refreshAdvanceList(productType) {
+                const advances = this.advanceEmpties.filter(item => 
+                    item.productType === productType && item.remainingQuantity > 0
+                );
+                
+                const container = document.getElementById(`${productType}AdvanceList`);
+                if (!container) return;
+                
+                if (advances.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">💰</div>
+                            <h3>No advance credits</h3>
+                            <p>No customers have advance credits for ${productType}</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = advances.map(advance => {
+                    const product = this.products.find(p => p.id === advance.productId);
+                    const productName = product ? product.shortName : 'Unknown Product';
+                    
+                    return `
+                        <div class="advance-item">
+                            <div class="advance-header">
+                                <span class="customer-name">${advance.customerName}</span>
+                                <span class="advance-amount">${advance.remainingQuantity} ${product?.unit || 'units'}</span>
+                            </div>
+                            <div class="advance-details">
+                                <span>${productName}</span>
+                                <span>Credit available</span>
+                            </div>
+                            <div class="advance-actions">
+                                <button class="btn btn-small btn-primary" onclick="useAdvance(${advance.id})">
+                                    Use Credit
+                                </button>
+                                <button class="btn btn-small btn-danger" onclick="deleteAdvance(${advance.id})">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            refreshHistoryList(productType) {
+                const history = this.emptiesData.filter(item => 
+                    item.productType === productType && item.cleared
+                ).sort((a, b) => new Date(b.dateClearedFull || b.dateCleared) - new Date(a.dateClearedFull || a.dateCleared));
+                
+                const container = document.getElementById(`${productType}HistoryList`);
+                if (!container) return;
+                
+                if (history.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">📜</div>
+                            <h3>No transaction history</h3>
+                            <p>No completed transactions for ${productType}</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = history.slice(0, 50).map(item => {
+                    const product = this.products.find(p => p.id === item.productId);
+                    const productName = product ? product.shortName : 'Unknown Product';
+                    const clearedDate = new Date(item.dateClearedFull || item.dateCleared).toLocaleDateString();
+                    
+                    return `
+                        <div class="debt-item">
+                            <div class="debt-header">
+                                <span class="customer-name">${item.customerName}</span>
+                                <span class="debt-amount">${item.quantity} ${product?.unit || 'units'}</span>
+                            </div>
+                            <div class="debt-details">
+                                <span>${productName}</span>
+                                <span>Cleared: ${clearedDate}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            refreshAnalytics(productType) {
+                const allData = this.emptiesData.filter(item => item.productType === productType);
+                const activeDebts = allData.filter(item => !item.cleared);
+                const advances = this.advanceEmpties.filter(item => 
+                    item.productType === productType && item.remainingQuantity > 0
+                );
+                
+                const totalOwed = activeDebts.reduce((sum, item) => sum + item.quantity, 0);
+                const totalAdvances = advances.reduce((sum, item) => sum + item.remainingQuantity, 0);
+                const activeCustomers = new Set(activeDebts.map(item => item.customerName)).size;
+                
+                const totalTransactions = allData.length;
+                const clearedTransactions = allData.filter(item => item.cleared).length;
+                const returnRate = totalTransactions > 0 ? Math.round((clearedTransactions / totalTransactions) * 100) : 0;
+                
+                // Update analytics display
+                const elements = {
+                    [`${productType}TotalOwed`]: totalOwed,
+                    [`${productType}TotalAdvances`]: totalAdvances,
+                    [`${productType}ActiveCustomers`]: activeCustomers,
+                };
+                
+                if (productType === 'bottles') {
+                    elements[`${productType}ReturnRate`] = `${returnRate}%`;
+                } else if (productType === 'crates') {
+                    elements[`${productType}CirculationRate`] = `${returnRate}%`;
+                } else if (productType === 'kegs') {
+                    const avgDays = this.calculateAverageTurnaroundTime(productType);
+                    elements[`${productType}TurnaroundTime`] = `${avgDays}d`;
+                }
+                
+                Object.entries(elements).forEach(([id, value]) => {
+                    const element = document.getElementById(id);
+                    if (element) element.textContent = value;
+                });
+            }
+
+            calculateAverageTurnaroundTime(productType) {
+                const clearedItems = this.emptiesData.filter(item => 
+                    item.productType === productType && item.cleared && item.dateClearedFull
+                );
+                
+                if (clearedItems.length === 0) return 0;
+                
+                const totalDays = clearedItems.reduce((sum, item) => {
+                    const start = new Date(item.dateOwed);
+                    const end = new Date(item.dateClearedFull);
+                    return sum + Math.floor((end - start) / (1000 * 60 * 60 * 24));
+                }, 0);
+                
+                return Math.round(totalDays / clearedItems.length);
+            }
+        }
+
+        // Initialize app
+        const app = new BreweryAppState();
+
+        // UI Functions
+        function showView(viewName) {
+            // Hide all views
+            document.querySelectorAll('.view, .product-view').forEach(view => {
+                view.classList.remove('active');
+            });
+            
+            // Show selected view
+            const targetView = document.getElementById(`${viewName}View`);
+            if (targetView) {
+                targetView.classList.add('active');
+                app.currentView = viewName;
+                app.currentProductType = null;
+            }
+            
+            // Update navigation
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            event?.target.closest('.nav-item')?.classList.add('active');
+            
+            // Update header
+            updateHeader();
+            updateProductColors();
+        }
+
+        function showProductView(productType) {
+            // Hide all views
+            document.querySelectorAll('.view, .product-view').forEach(view => {
+                view.classList.remove('active');
+            });
+            
+            // Show product view
+            const productView = document.getElementById(`${productType}View`);
+            if (productView) {
+                productView.classList.add('active');
+                app.currentView = 'product';
+                app.currentProductType = productType;
+                app.activeTab = 'debts';
+            }
+            
+            // Update header and colors
+            updateHeader();
+            updateProductColors(productType);
+            
+            // Refresh data
+            app.refreshCurrentView();
+            
+            // Set active tab
+            showTab(productType, 'debts');
+        }
+
+        function showTab(productType, tabName) {
+            // Update tab buttons
+            const tabContainer = document.querySelector(`#${productType}View .tab-nav`);
+            if (tabContainer) {
+                tabContainer.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                tabContainer.querySelector(`button[onclick*="'${tabName}'"]`)?.classList.add('active');
+            }
+            
+            // Update tab content
+            const viewContainer = document.getElementById(`${productType}View`);
+            if (viewContainer) {
+                viewContainer.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                const targetContent = document.getElementById(`${productType}-${tabName}`);
+                if (targetContent) {
+                    targetContent.classList.add('active');
+                    app.activeTab = tabName;
+                }
+            }
+        }
+
+        function updateHeader() {
+            const headerTitle = document.getElementById('headerTitle');
+            const breadcrumb = document.getElementById('breadcrumb');
+            
+            if (app.currentView === 'dashboard') {
+                headerTitle.textContent = 'Brewery Empties Tracker';
+                breadcrumb.textContent = 'Dashboard';
+            } else if (app.currentProductType) {
+                const productName = app.currentProductType.charAt(0).toUpperCase() + app.currentProductType.slice(1);
+                headerTitle.textContent = `${productName} Management`;
+                breadcrumb.textContent = `Dashboard > ${productName}`;
+            }
+        }
+
+        function updateProductColors(productType) {
+            const root = document.documentElement;
+            
+            if (productType === 'bottles') {
+                root.style.setProperty('--product-color', 'var(--bottles-primary)');
+            } else if (productType === 'crates') {
+                root.style.setProperty('--product-color', 'var(--crates-primary)');
+            } else if (productType === 'kegs') {
+                root.style.setProperty('--product-color', 'var(--kegs-primary)');
+            } else {
+                root.style.setProperty('--product-color', 'var(--bottles-primary)');
+            }
+        }
+
+        // Entry Management Functions
+        async function addDebtEntry(productType, event) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const formData = new FormData(form);
+            const customerName = formData.get('customerName').trim();
+            const productId = parseInt(formData.get('productId'));
+            const quantity = parseInt(formData.get('quantity'));
+            
+            if (!customerName || !productId || !quantity) {
+                app.showNotification('Please fill all fields', 'error');
+                return;
+            }
+            
+            try {
+                // Check for existing advances
+                const existingAdvance = app.advanceEmpties.find(advance => 
+                    advance.customerName === customerName && 
+                    advance.productId === productId && 
+                    advance.remainingQuantity > 0
+                );
+                
+                let finalQuantity = quantity;
+                
+                if (existingAdvance && existingAdvance.remainingQuantity >= quantity) {
+                    // Use advance to cover debt completely
+                    existingAdvance.remainingQuantity -= quantity;
+                    await app.updateInStore('advanceEmpties', existingAdvance);
+                    
+                    if (existingAdvance.remainingQuantity === 0) {
+                        await app.deleteFromStore('advanceEmpties', existingAdvance.id);
+                    }
+                    
+                    app.showNotification(`Debt covered by existing advance credit`, 'success');
+                    finalQuantity = 0;
+                } else if (existingAdvance && existingAdvance.remainingQuantity > 0) {
+                    // Partial advance coverage
+                    finalQuantity = quantity - existingAdvance.remainingQuantity;
+                    existingAdvance.remainingQuantity = 0;
+                    await app.updateInStore('advanceEmpties', existingAdvance);
+                    await app.deleteFromStore('advanceEmpties', existingAdvance.id);
+                    
+                    app.showNotification(`Partial debt covered by advance. ${finalQuantity} units added as debt`, 'success');
+                }
+                
+                // Add remaining debt if any
+                if (finalQuantity > 0) {
+                    const debtEntry = {
+                        customerName,
+                        productId,
+                        productType,
+                        quantity: finalQuantity,
+                        dateOwed: new Date().toISOString(),
+                        cleared: false
+                    };
+                    
+                    await app.addToStore('emptiesData', debtEntry);
+                }
+                
+                // Refresh data and UI
+                await app.loadInitialData();
+                app.updateUI();
+                
+                // Reset form
+                form.reset();
+                
+                if (finalQuantity === 0) {
+                    app.showNotification('Entry added and covered by advance', 'success');
+                } else {
+                    app.showNotification('Debt entry added successfully', 'success');
+                }
+                
+            } catch (error) {
+                console.error('Error adding debt entry:', error);
+                app.showNotification('Error adding entry', 'error');
+            }
+        }
+
+        function openReturnModal(debtId) {
+            const debt = app.emptiesData.find(d => d.id === debtId);
+            if (!debt) return;
+            
+            app.currentReturnData = debt;
+            
+            const modal = document.getElementById('returnModal');
+            const quantityInput = document.getElementById('returnQuantity');
+            
+            quantityInput.value = debt.quantity;
+            quantityInput.max = debt.quantity * 2; // Allow surplus returns
+            
+            modal.classList.add('active');
+        }
+
+        async function processReturn(event) {
+            event.preventDefault();
+            
+            if (!app.currentReturnData) return;
+            
+            const returnQuantity = parseInt(document.getElementById('returnQuantity').value);
+            const createAdvance = document.getElementById('createAdvance').checked;
+            const debt = app.currentReturnData;
+            
+            try {
+                if (returnQuantity === debt.quantity) {
+                    // Exact return - mark as cleared
+                    debt.cleared = true;
+                    debt.dateCleared = new Date().toLocaleDateString();
+                    debt.dateClearedFull = new Date().toISOString();
+                    await app.updateInStore('emptiesData', debt);
+                    
+                    app.showNotification('Debt cleared successfully', 'success');
+                    
+                } else if (returnQuantity < debt.quantity) {
+                    // Partial return - update debt quantity
+                    debt.quantity -= returnQuantity;
+                    await app.updateInStore('emptiesData', debt);
+                    
+                    app.showNotification(`Partial return processed. ${debt.quantity} units remaining`, 'success');
+                    
+                } else if (returnQuantity > debt.quantity && createAdvance) {
+                    // Surplus return - clear debt and create advance
+                    const surplusQuantity = returnQuantity - debt.quantity;
+                    
+                    // Clear the debt
+                    debt.cleared = true;
+                    debt.dateCleared = new Date().toLocaleDateString();
+                    debt.dateClearedFull = new Date().toISOString();
+                    await app.updateInStore('emptiesData', debt);
+                    
+                    // Create advance for surplus
+                    const advance = {
+                        customerName: debt.customerName,
+                        productId: debt.productId,
+                        productType: debt.productType,
+                        quantity: surplusQuantity,
+                        remainingQuantity: surplusQuantity,
+                        dateCreated: new Date().toISOString()
+                    };
+                    
+                    await app.addToStore('advanceEmpties', advance);
+                    
+                    app.showNotification(`Debt cleared and ${surplusQuantity} units added as advance`, 'success');
+                }
+                
+                // Refresh data and close modal
+                await app.loadInitialData();
+                app.updateUI();
+                closeModal('returnModal');
+                
+            } catch (error) {
+                console.error('Error processing return:', error);
+                app.showNotification('Error processing return', 'error');
+            }
+        }
+
+        function openEditModal(debtId) {
+            const debt = app.emptiesData.find(d => d.id === debtId);
+            if (!debt) return;
+            
+            app.currentEditId = debtId;
+            
+            const modal = document.getElementById('editModal');
+            document.getElementById('editCustomerName').value = debt.customerName;
+            document.getElementById('editQuantity').value = debt.quantity;
+            document.getElementById('editDate').value = debt.dateOwed.split('T')[0];
+            
+            modal.classList.add('active');
+        }
+
+        async function saveEdit(event) {
+            event.preventDefault();
+            
+            if (!app.currentEditId) return;
+            
+            const debt = app.emptiesData.find(d => d.id === app.currentEditId);
+            if (!debt) return;
+            
+            try {
+                debt.customerName = document.getElementById('editCustomerName').value.trim();
+                debt.quantity = parseInt(document.getElementById('editQuantity').value);
+                debt.dateOwed = new Date(document.getElementById('editDate').value).toISOString();
+                
+                await app.updateInStore('emptiesData', debt);
+                
+                await app.loadInitialData();
+                app.updateUI();
+                
+                closeModal('editModal');
+                app.showNotification('Entry updated successfully', 'success');
+                
+            } catch (error) {
+                console.error('Error updating entry:', error);
+                app.showNotification('Error updating entry', 'error');
+            }
+        }
+
+        async function deleteDebt(debtId) {
+            if (!confirm('Are you sure you want to delete this debt entry?')) return;
+            
+            try {
+                await app.deleteFromStore('emptiesData', debtId);
+                
+                await app.loadInitialData();
+                app.updateUI();
+                
+                app.showNotification('Debt entry deleted', 'success');
+                
+            } catch (error) {
+                console.error('Error deleting debt:', error);
+                app.showNotification('Error deleting entry', 'error');
+            }
+        }
+
+        async function deleteAdvance(advanceId) {
+            if (!confirm('Are you sure you want to delete this advance credit?')) return;
+            
+            try {
+                await app.deleteFromStore('advanceEmpties', advanceId);
+                
+                await app.loadInitialData();
+                app.updateUI();
+                
+                app.showNotification('Advance credit deleted', 'success');
+                
+            } catch (error) {
+                console.error('Error deleting advance:', error);
+                app.showNotification('Error deleting advance', 'error');
+            }
+        }
+
+        function filterDebts(productType, searchTerm) {
+            const container = document.getElementById(`${productType}DebtList`);
+            const debtItems = container.querySelectorAll('.debt-item');
+            
+            debtItems.forEach(item => {
+                const customerName = item.querySelector('.customer-name').textContent.toLowerCase();
+                const isVisible = customerName.includes(searchTerm.toLowerCase());
+                item.style.display = isVisible ? 'block' : 'none';
+            });
+        }
+
+        // Modal Functions
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+            
+            // Reset current data
+            if (modalId === 'returnModal') {
+                app.currentReturnData = null;
+            } else if (modalId === 'editModal') {
+                app.currentEditId = null;
+            }
+        }
+
+        function showSettings() {
+            document.getElementById('settingsModal').classList.add('active');
+        }
+
+        // Data Management Functions
+        function exportData() {
+            const data = {
+                products: app.products,
+                emptiesData: app.emptiesData,
+                advanceEmpties: app.advanceEmpties,
+                exportDate: new Date().toISOString(),
+                version: '1.0'
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `brewery-empties-backup-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            URL.revokeObjectURL(url);
+            app.showNotification('Data exported successfully', 'success');
+        }
+
+        async function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                
+                if (!data.products || !data.emptiesData || !data.advanceEmpties) {
+                    throw new Error('Invalid backup file format');
+                }
+                
+                // Clear existing data
+                const stores = ['products', 'emptiesData', 'advanceEmpties'];
+                for (const storeName of stores) {
+                    const transaction = app.db.transaction([storeName], 'readwrite');
+                    const store = transaction.objectStore(storeName);
+                    await new Promise((resolve, reject) => {
+                        const request = store.clear();
+                        request.onsuccess = () => resolve();
+                        request.onerror = () => reject(request.error);
+                    });
+                }
+                
+                // Import new data
+                for (const product of data.products) {
+                    await app.addToStore('products', product);
+                }
+                
+                for (const entry of data.emptiesData) {
+                    await app.addToStore('emptiesData', entry);
+                }
+                
+                for (const advance of data.advanceEmpties) {
+                    await app.addToStore('advanceEmpties', advance);
+                }
+                
+                // Refresh app state
+                await app.loadInitialData();
+                app.updateUI();
+                
+                closeModal('settingsModal');
+                app.showNotification('Data imported successfully', 'success');
+                
+            } catch (error) {
+                console.error('Error importing data:', error);
+                app.showNotification('Error importing data. Please check the file format.', 'error');
+            }
+            
+            // Reset file input
+            event.target.value = '';
+        }
+
+        async function clearAllData() {
+            if (!confirm('Are you sure you want to clear all data? This action cannot be undone.')) return;
+            
+            try {
+                const stores = ['products', 'emptiesData', 'advanceEmpties'];
+                for (const storeName of stores) {
+                    const transaction = app.db.transaction([storeName], 'readwrite');
+                    const store = transaction.objectStore(storeName);
+                    await new Promise((resolve, reject) => {
+                        const request = store.clear();
+                        request.onsuccess = () => resolve();
+                        request.onerror = () => reject(request.error);
+                    });
+                }
+                
+                // Reinitialize with default products
+                await app.initializeDefaultProducts();
+                await app.loadInitialData();
+                app.updateUI();
+                
+                closeModal('settingsModal');
+                app.showNotification('All data cleared and reset to defaults', 'success');
+                
+            } catch (error) {
+                console.error('Error clearing data:', error);
+                app.showNotification('Error clearing data', 'error');
+            }
+        }
+
+        // Additional Functions
+        function quickAddEntry() {
+            if (app.currentProductType) {
+                showTab(app.currentProductType, 'add');
+            } else {
+                app.showNotification('Please select a product type first', 'error');
+            }
+        }
+
+        function showAllProductsView() {
+            // Implementation for cross-product view
+            app.showNotification('Cross-product view coming soon', 'info');
+        }
+
+        function showConversionTool() {
+            // Implementation for conversion between bottles/crates/kegs
+            app.showNotification('Conversion tool coming soon', 'info');
+        }
+
+        function showReportsView() {
+            // Implementation for advanced reporting
+            app.showNotification('Advanced reports coming soon', 'info');
+        }
+
+        function useAdvance(advanceId) {
+            // Implementation for using advance credits
+            app.showNotification('Advance usage feature coming soon', 'info');
+        }
+
+        function showProductManager() {
+            // Implementation for product management
+            app.showNotification('Product manager coming soon', 'info');
+        }
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            // Close modals when clicking outside
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        modal.classList.remove('active');
+                    }
+                });
+            });
+            
+            // Handle back navigation
+            window.addEventListener('popstate', () => {
+                if (app.currentProductType) {
+                    showView('dashboard');
+                }
+            });
+        });
+
+        // Touch gestures for mobile
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+            
+            // Horizontal swipe for tab navigation
+            if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+                if (app.currentProductType) {
+                    const tabs = ['debts', 'add', 'advances', 'history', 'analytics'];
+                    const currentIndex = tabs.indexOf(app.activeTab);
+                    
+                    if (deltaX > 0 && currentIndex > 0) {
+                        // Swipe right - previous tab
+                        showTab(app.currentProductType, tabs[currentIndex - 1]);
+                    } else if (deltaX < 0 && currentIndex < tabs.length - 1) {
+                        // Swipe left - next tab
+                        showTab(app.currentProductType, tabs[currentIndex + 1]);
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
